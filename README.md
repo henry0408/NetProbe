@@ -2,23 +2,7 @@ Hi, this is Project4 for IERG4180.\
 Name: Hangyu CHEN\
 SID: 1155197448
 
-
-## 1. Video recorded that shows the final result of my code (Plz change to 4k when watching it!):
-[![Socket Programming wiz threadpool](https://img.youtube.com/vi/sTgdCjFESE8/0.jpg)](https://www.youtube.com/watch?v=sTgdCjFESE8)
-
-In the left Ubuntu, 
-* the server is at the top left
-* an client which receive tcp is at the top right
-* an client which send tcp is at the bottom left
-* an client which send request is at the bottom right
-
-In the right Windows,
-* an client which receive udp is at the top
-* an client which send udp is at the bottom
-
-Link: https://www.youtube.com/watch?v=sTgdCjFESE8
-
-## 2. Command for compiling and executing the code
+## 1. Command for compiling and executing the code
 As I have already compiled the code as two files: server and client. So you can simply using command such as:
 ```
 ./server
@@ -27,62 +11,49 @@ and
 ```
 ./client -send -proto tcp
 ```
+```
+./client -http -url http://localhost:8080/index.html
+```
+```
+./client -http -url https://localhost/index.html
+```
+```
+./client -http -url https://www.ietf.org/rfc/rfc2616.txt -file text.txt
+```
 to excute the code
 
 Of course, you can complie the code using:
 ```
-g++ threadpool.cpp main.cpp -o server -pthread
+g++ threadpool.cpp main.cpp -o server -pthread -lssl -lcrypto
 ```
 and
 ```
-g++ client.cpp -o client
+g++ client.cpp -o client -pthread -lssl -lcrypto
 ```
 
 **Please be aware that I used ms for the -stat command. In this case, -stat 1000 means the Elapsed will be 1 second (1000 ms).**
 
-### 2.1. Please describe how the server makes sure to close all the sockets and indicate the specific line(s) of code responsible for this. (Very important)
-As for the tcp transmission, we only used the socket which is originally used for sending the arguments from client. \
-In this case, we close this socket when the client (user) using Ctrl+C or sending all the required pktnum.
+## 2. Using Openssl to make a self-signed cert for authenticating itself
+It includes:
+(a) secure communications over SSL/TLS;\ 
+(b) authentication of server’s digital certificates;\ 
+(c) support Server Name Indication (SNI);\ 
+and (d) performs server hostname verification.\
 
-As for the udp transmission, we used two sockets, one is originally used for sending the arguments from client (tcp socket), the other is used for transmitting data (udp socket).\
-
-When the client sending udp/ Server receiving udp:\
-For Client:
-* the udp socket in the client will be closed after using Ctrl+C or sending all the required pktnum
-* then client send a "finish" message to the server using tcp socket
-* after sending that "finish" message, client close the original tcp socket.
-This code could be found from line 758-763 in client.cpp.
-For Server:
-* the server will keep listen the tcp socket, and if it receives the "finish" message, it will break the loop for receiving data
-* then, server close both udp and tcp socket
-This code could be found from line 626-628 in main.cpp
-
-
-When the client receiving udp/ Server sending udp:\
-For Client:
-* It will keep sending "notfinish" message to the Server after receiving udp data. (line 906 in client.cpp)
-* It will stop sending the "notfinish" message when using Ctrl+C or receving all the required pktnum (recv == 0)
-* Then, it close the tcp socket and the udp socket. (line 922, 935)
-This code could be found from line 908 and line 935 in client.cpp
-
-For Server:
-* It will keep receiving message from Client to receive the "notfinish" message
-* If it successfully receive that message, it means Client is still open and Server could send TCP data. (line 312 in main.cpp)
-* If it receive nothing (read == 0), it will stop sending data and break the loop to close the tcp socket. (line 316 in main.cpp)
-
-
-### 2.2. Please describe how you control the pool size and indicate the specific line(s) of code responsible for this.  (Very important)
-I set up an indepentent thread in the threadpool which is only used for adjusting the size and print out the size of the current threadpool with a given time (Elapsed).\
-It could be found from the function
+### 2.1 Server Certificate (`domain.crt`) and Private Key (`domain.key`):
+- You can either generate a self-signed certificate or obtain a certificate from a trusted certificate authority (CA).
+- If you want to generate a self-signed certificate, you can use OpenSSL to generate a private key and a self-signed certificate:
 ```
-void *adjust_thread(void *threadpool)
+openssl req -newkey rsa:2048 -nodes -keyout domain.key -x509 -days 365 -out domain.crt
 ```
-in the threadpool.cpp (at line 293)
+- This command will generate a 2048-bit RSA private key (`domain.key`) and a self-signed certificate (`domain.crt`) valid for 365 days. You will be prompted to enter some information for the certificate during the process.
+- If you have obtained a certificate from a CA, make sure you have both the certificate file and the corresponding private key file.
 
-### 2.3. Do you disable Nagle algorithm? And indicate the specific line(s) of code responsible for this.
-Yes, I used the code in the tutorial to disable it in the response mode.\
+### 2.2 Client Certificate Authority (CA) Certificate (`rootCA.crt`):
+- If you are using self-signed certificates for client authentication, you will need to generate a CA certificate (self-signed) and use it to sign the client's certificate.
+- To generate a CA certificate, you can use a similar OpenSSL command as before:
 ```
-int one = 1;
-setsockopt(sock, SOL_TCP, TCP_NODELAY, &one, sizeof(one));
+openssl req -newkey rsa:2048 -nodes -keyout rootCA.key -x509 -days 365 -out rootCA.crt
 ```
-It could be found at line 940 in client.cpp and line 1039 in main.cpp
+- This command will generate a CA private key (`rootCA.key`) and a self-signed CA certificate (`rootCA.crt`) valid for 365 days.
+- Make sure to keep the private key (`rootCA.key`) secure and use it to sign the client certificates.
