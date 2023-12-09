@@ -1301,12 +1301,12 @@ int main(int argc, char const *argv[])
         
         else if(ts[i].proto == 2 && ts[i].mode == 3)    //http
         {
-            printf("hahah\n");
+            printf("http response\n");
             threadpool_add(thp, http_work, (void*)&ts[i],ts[i].stat_disp);   /* 向线程池中添加任务 */
         }
         else if(ts[i].proto == 3 && ts[i].mode == 3)    //http
         {
-            printf("xixiix\n");
+            printf("https response\n");
             threadpool_add(thp, http_work2, (void*)&ts[i],ts[i].stat_disp);   /* 向线程池中添加任务 */
         }
 
