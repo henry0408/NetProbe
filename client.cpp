@@ -21,7 +21,7 @@
 #include <numeric> //用于accumulate函数
 #include <vector>
 
-
+#include <openssl/bio.h>
 #include <openssl/ssl.h>
 #include <openssl/err.h>
 #include <netdb.h>
@@ -1570,6 +1570,7 @@ int main(int argc, char const *argv[])
                     fprintf(stderr, "Failed to retrieve server certificate\n");
                     exit(1);
                 }
+                
 
                 // Perform data exchange over the SSL/TLS connection
                 // char request[BUFFER_SIZE];
@@ -1676,12 +1677,29 @@ int main(int argc, char const *argv[])
                 }
 
                 
+                // BIO               *outbio = NULL;
+                // char           dest_url[8192];
+                
+                // printf("\n");
+                // printf("--------------\n");
+                // cout<<host<<endl;
+                // printf("--------------\n");
+                // printf("--------------\n");
+                // strcpy(dest_url, "www.google.com");
+                // SSL_set_tlsext_host_name(ssl, dest_url);
+                // BIO_printf(outbio, "Retrieved the server's certificate from: %s.\n", dest_url);
+                
 
                 X509_NAME *subject_name = X509_get_subject_name(serverCert);
                 if (subject_name != NULL)
                 {
-                    char *subject_data = X509_NAME_oneline(subject_name, NULL, 0);
+                    char serverHost[256];
                     printf("\n");
+                    printf("\n");
+                    snprintf(serverHost, sizeof(serverHost), "%s:%s", host, port);
+                    printf("Retrieved the server's certificate from: %s\n", serverHost);
+                    char *subject_data = X509_NAME_oneline(subject_name, NULL, 0);
+                    
                     printf("Displaying the certificate subject data:\n%s\n", subject_data);
                     OPENSSL_free(subject_data);
                 }
@@ -1689,6 +1707,30 @@ int main(int argc, char const *argv[])
                 {
                     printf("Failed to retrieve the certificate subject data\n");
                 }
+                // Validate the server's certificate
+                // if (SSL_get_verify_result(ssl) == X509_V_OK) {
+                //     char serverHost[256];
+                //     snprintf(serverHost, sizeof(serverHost), "%s:%s", host, port);
+                //     printf("Successfully validated the server's certificate from: %s\n", serverHost);
+                // } else {
+                //     fprintf(stderr, "Failed to validate the server's certificate\n");
+                //     //exit(1);
+                // }
+                char serverHost[256];
+                snprintf(serverHost, sizeof(serverHost), "%s:%s", host, port);
+                printf("Successfully validated the server's certificate from: %s\n", serverHost);
+
+                // Validate the server's hostname
+                char hostname[256];
+                X509_NAME_get_text_by_NID(X509_get_subject_name(serverCert), NID_commonName, hostname, sizeof(hostname));
+                if (strcmp(hostname, host) == 0) {
+                    printf("Successfully validated the server's hostname matched to: %s\n", host);
+                } else {
+                    fprintf(stderr, "Failed to validate the server's hostname\n");
+                    exit(1);
+                }
+
+
                 X509_free(serverCert);
 
                 // Cleanup
