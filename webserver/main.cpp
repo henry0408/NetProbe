@@ -1,11 +1,12 @@
 #include "threadpool.h"
 #include "http_conn.h"
 #include "lst_timer.h"
+#include "log.h"
 
 #define MAX_FD 65536                // 最大的客户端的个数
 #define MAX_EVENT_NUMBER 10000      // 监听的最大的事件数量
 
-
+#define SYNLOG                      //同步写日志
 
 //添加信号捕捉
 void addsig(int sig, void( handler )(int)){
@@ -47,6 +48,9 @@ int main(int argc, char const *argv[])
     int port = atoi( argv[1] ); //把命令行输入的port转换为int类型
     printf("port using is: %d\n", port);
     addsig( SIGPIPE, SIG_IGN );
+
+    //初始化日志(单例模式)
+    Log::get_instance()->init("ServerLog", 2000, 800000); //同步日志模型
 
     //初始化线程池，因为是模板类，模板对应一个http_conn任务
     threadpool< http_conn >* pool = NULL;
@@ -150,6 +154,7 @@ int main(int argc, char const *argv[])
             //如果客户端关闭：不管是正常关闭/错误关闭
             else if( events[i].events & ( EPOLLRDHUP | EPOLLHUP | EPOLLERR ) ) 
             {
+                LOG_INFO("Client closed");
                 users[sockfd].close_conn(); //从epoll实例中删除这个监听的fd，并把这个fd设为-1
                 //找到这个定时器（users[sockfd].timer），并从链表（共享的m_timer_lst）中移除
                 http_conn::m_timer_lst.del_timer(users[sockfd].timer);
@@ -157,6 +162,7 @@ int main(int argc, char const *argv[])
             //如果客户端发来数据
             else if(events[i].events & EPOLLIN) 
             {
+                LOG_INFO("deal with the client read");
                 //如果主线程成功读取客户端发来的数据
                 if(users[sockfd].read()) {
                     //交给工作线程处理
@@ -171,6 +177,7 @@ int main(int argc, char const *argv[])
             //如果工作线程要发数据
             else if( events[i].events & EPOLLOUT ) 
             {
+                LOG_INFO("deal with the client write");
                 //主线程向客户端发送数据
                 if( !users[sockfd].write() ) {
                     users[sockfd].close_conn();

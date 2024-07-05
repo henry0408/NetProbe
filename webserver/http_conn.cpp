@@ -176,11 +176,6 @@ bool http_conn::read()
     return true;
 }
 
-// char* http_conn::getline()
-// {
-//     return m_read_buf + m_start_line;
-// }
-
 
 /*------------------------下面这一组函数被process_read调用以解析read buffer中的HTTP请求----------------------------------*/
 
